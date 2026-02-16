@@ -9,13 +9,12 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 public class KafkaProducerExample {
-    
 
     public static void main(String[] args) {
-
 
         // Configuración del productor de Kafka
         Properties props = new Properties();
@@ -23,26 +22,36 @@ public class KafkaProducerExample {
         props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
-
         // --- CONFIGURACIÓN DE SEGURIDAD SSL ---
         props.put("security.protocol", "SSL");
-        
+
         // Ruta al archivo que creamos con keytool
         props.put("ssl.truststore.location", "C:/Users/PC/Desktop/Kafka/certificados/kafka.truststore.jks");
         props.put("ssl.truststore.password", "SISTEMASCENTRALESkey");
 
-
         // Crear el productor de Kafka
         Producer<String, String> producer = new KafkaProducer<>(props);
 
-
         // Enviar mensajes genéricos
-        for (int i = 0; i < 10; i++) {
-            producer.send(new ProducerRecord<>("test-topic", "key-" + Integer.toString(i), "mensaje-" + i));
+        try {
+            for (int i = 0; i < 50; i++) {
+                ProducerRecord<String, String> record = new ProducerRecord<>("ex-topic", "key-" + i, "mensaje-" + i);
+
+                producer.send(record, (RecordMetadata metadata, Exception exception) -> {
+                    if (exception == null) {
+                        System.out.println("Logrado! topic=" + metadata.topic()
+                                + " partition=" + metadata.partition()
+                                + " offset=" + metadata.offset());
+                    } else {
+                        System.err.println("Error al enviar: " + exception.getMessage());
+                    }
+                });
+            }
+        } finally {
+            // Espera a que todos los mensajes pendientes terminen de enviarse
+            producer.flush();
+            producer.close();
         }
-
-        producer.close();
-
 
     }
 }
